@@ -1,4 +1,4 @@
-# Kamui
+# kamui
 
 Local file sharing in your browser.
 Just open the [website](https://kamui.onrender.com) and share files directly between browsers!
