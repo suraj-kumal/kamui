@@ -1,0 +1,402 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, sans-serif;
+  background-color: #1a1a1a;
+  color: #ffffff;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  -webkit-transition: background-color 0.3s ease;
+  transition: background-color 0.3s ease;
+}
+
+.container {
+  position: relative;
+  width: 100vw;
+  width: 100dvw;
+  height: 100vh;
+  height: 100dvh;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-justify-content: center;
+  justify-content: center;
+  -webkit-align-items: center;
+  align-items: center;
+}
+
+.radar-background {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: -webkit-radial-gradient(circle, transparent 10%, #1a1a1a 90%);
+  background: radial-gradient(circle, transparent 10%, #1a1a1a 90%);
+  -webkit-transition: background 0.3s ease;
+  transition: background 0.3s ease;
+}
+
+.radar-circles {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: -webkit-repeating-radial-gradient(
+    circle,
+    transparent,
+    transparent 50px,
+    rgba(255, 255, 255, 0.03) 50px,
+    rgba(255, 255, 255, 0.03) 51px
+  );
+  background: repeating-radial-gradient(
+    circle,
+    transparent,
+    transparent 50px,
+    rgba(255, 255, 255, 0.03) 50px,
+    rgba(255, 255, 255, 0.03) 51px
+  );
+}
+
+.device-info {
+  position: absolute;
+  bottom: 50px;
+  left: 50%;
+  -webkit-transform: translateX(-50%);
+  transform: translateX(-50%);
+  text-align: center;
+  z-index: 2;
+}
+
+.device-name {
+  font-size: 1.2em;
+  margin-bottom: 5px;
+}
+
+.device-status {
+  color: #4a9eff;
+  font-size: 0.9em;
+}
+
+.peer-container {
+  position: absolute;
+  width: 100vw;
+  width: 100dvw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.peer {
+  position: absolute;
+  background-color: #4a9eff;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  -webkit-justify-content: center;
+  justify-content: center;
+  -webkit-align-items: center;
+  align-items: center;
+  cursor: pointer;
+  -webkit-transition: all 0.3s ease;
+  transition: all 0.3s ease;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+.peer:hover {
+  -webkit-transform: scale(1.1);
+  transform: scale(1.1);
+  background-color: #66b1ff;
+}
+
+.peer.selected {
+  background-color: #2ecc71;
+}
+
+.peer-icon {
+  width: 30px;
+  height: 30px;
+  background-color: white;
+  border-radius: 5px;
+  z-index: 2;
+}
+
+.peer-info {
+  position: absolute;
+  bottom: -25px;
+  left: 50%;
+  -webkit-transform: translateX(-50%);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  color: #ffffff;
+  font-size: 0.8em;
+  text-align: center;
+}
+
+.progress-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  -webkit-transition: background 0.3s linear;
+  transition: background 0.3s linear;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+.peer.transferring {
+  -webkit-animation: pulse 2s infinite;
+  animation: pulse 2s infinite;
+}
+
+@-webkit-keyframes pulse {
+  0% {
+    -webkit-box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.4);
+  }
+  70% {
+    -webkit-box-shadow: 0 0 0 10px rgba(46, 204, 113, 0);
+  }
+  100% {
+    -webkit-box-shadow: 0 0 0 0 rgba(46, 204, 113, 0);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(46, 204, 113, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(46, 204, 113, 0);
+  }
+}
+
+.status-tooltip {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  -webkit-transform: translateX(-50%);
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  -webkit-transition: opacity 0.3s ease;
+  transition: opacity 0.3s ease;
+  z-index: 1000;
+}
+
+.peer.transferring .status-tooltip {
+  opacity: 1;
+}
+
+.file-input {
+  display: none;
+}
+
+.header-buttons {
+  position: fixed;
+  top: 20px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+}
+
+.logo img {
+  max-width: 100%;
+  height: auto;
+  max-height: 50px;
+  object-fit: contain;
+}
+.header-button img {
+  max-width: 100%;
+  height: auto;
+  max-height: 35px;
+  object-fit: contain;
+}
+.button-container {
+  display: flex;
+  gap: 10px;
+}
+
+.header-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-transition: all 0.3s ease;
+  transition: all 0.3s ease;
+}
+
+.header-button:hover {
+  background-color: rgba(0, 0, 0, 0.8);
+  -webkit-transform: scale(1.1);
+  transform: scale(1.1);
+}
+
+body[style*="background-color: white"] .radar-background {
+  background: -webkit-radial-gradient(circle, transparent 10%, #ffffff 90%);
+  background: radial-gradient(circle, transparent 10%, #ffffff 90%);
+}
+body[style*="background-color: white"] .radar-circles {
+  background: -webkit-repeating-radial-gradient(
+    circle,
+    transparent,
+    transparent 50px,
+    rgba(0, 0, 0, 0.05) 50px,
+    rgba(0, 0, 0, 0.05) 51px
+  );
+  background: repeating-radial-gradient(
+    circle,
+    transparent,
+    transparent 50px,
+    rgba(0, 0, 0, 0.05) 50px,
+    rgba(0, 0, 0, 0.05) 51px
+  );
+}
+body[style*="background-color: white"] {
+  color: #000000;
+}
+
+body[style*="background-color: white"] .device-status {
+  color: #0066cc;
+}
+
+body[style*="background-color: white"] .header-button {
+  background-color: rgba(200, 200, 200, 0.5);
+  color: #000000;
+}
+
+body[style*="background-color: white"] .header-button:hover {
+  background-color: rgba(200, 200, 200, 0.8);
+}
+
+@-webkit-keyframes spin {
+  from {
+    -webkit-transform: rotate(0deg);
+  }
+  to {
+    -webkit-transform: rotate(360deg);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@supports (-webkit-touch-callout: none) {
+  .peer,
+  .progress-ring {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+}
+
+@-moz-document url-prefix() {
+  .progress-ring {
+    transform: rotate(0.01deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .peer {
+    width: 50px;
+    height: 50px;
+  }
+  .peer-icon {
+    width: 25px;
+    height: 25px;
+  }
+  .device-info {
+    bottom: 30px;
+  }
+  .header-button {
+    width: 35px;
+    height: 35px;
+  }
+}
+
+@media (max-width: 480px) {
+  .peer {
+    width: 40px;
+    height: 40px;
+  }
+  .peer-icon {
+    width: 20px;
+    height: 20px;
+  }
+  .peer-info {
+    font-size: 0.7em;
+    bottom: -20px;
+  }
+  .device-info {
+    bottom: 10vh;
+  }
+  .header-button {
+    width: 30px;
+    height: 30px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .peer,
+  .header-button,
+  .status-tooltip {
+    -webkit-transition: none;
+    transition: none;
+  }
+  .peer.transferring {
+    -webkit-animation: none;
+    animation: none;
+  }
+  .progress-ring {
+    -webkit-transition: none;
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .peer {
+    border: 2px solid #ffffff;
+  }
+  .peer.selected {
+    border-color: #000000;
+  }
+  .status-tooltip {
+    background: #000000;
+    border: 1px solid #ffffff;
+  }
+}

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title class="title">Kamui</title>
+
+    <!-- Primary Meta Tags -->
+    <meta
+      name="title"
+      content="Kamui - Peer-to-Peer File Sharing Over Local Network"
+    />
+    <meta
+      name="description"
+      content="Peer-to-peer file sharing application over local networks. Share files easily with nearby devices."
+    />
+    <meta
+      name="keywords"
+      content="file sharing, p2p, peer-to-peer, local network, file transfer, secure sharing, share files, Suraj Kumal, Kamui"
+    />
+    <meta name="robots" content="index, follow" />
+    <meta name="language" content="English" />
+    <meta name="author" content="Suraj Kumal" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://Kamui.onrender.com/" />
+    <meta
+      property="og:title"
+      content="Kamui - peer-to-Peer File Sharing Over Local Network"
+    />
+    <meta
+      property="og:description"
+      content="peer-to-peer file sharing application over local networks. Share files easily with nearby devices."
+    />
+    <meta property="og:image" content="/images/card.webp" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://Kamui.onrender.com/" />
+    <meta
+      property="twitter:title"
+      content="Kamui - Peer-to-Peer File Sharing Over Local Network"
+    />
+    <meta
+      property="twitter:description"
+      content="peer-to-peer file sharing application for local networks. Share files easily with nearby devices."
+    />
+    <meta property="twitter:image" content="/images/card.webp" />
+
+    <!-- Favicon -->
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/images/favicon.ico"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/images/apple-touch-icon.png"
+    />
+
+    <link rel="stylesheet" href="style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Montserrat+Alternates:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Kamui",
+        "applicationCategory": "File Sharing Application",
+        "operatingSystem": "Web",
+        "description": "Secure peer-to-peer file sharing application for local networks. Share files easily with nearby devices using Kamui",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="radar-background"></div>
+      <div class="radar-circles"></div>
+      <div class="peer-container" id="peerContainer"></div>
+
+      <div class="device-info">
+        <div class="device-name" id="deviceName"></div>
+        <div class="device-status">
+          You can be discovered by everyone on this network
+        </div>
+      </div>
+      <input type="file" id="fileInput" class="file-input" multiple />
+
+      <div class="header-buttons">
+        <div class="logo-container">
+          <div class="logo">
+            <img src="/images/logomain.png" alt="kamui" />
+          </div>
+        </div>
+        <div class="button-container">
+          <div class="header-button">
+            <a href="https://github.com/suraj-kumal/kamui" target="_blank"
+              ><img src="/images/github-mark-white.png" alt="github"
+            /></a>
+          </div>
+          <div class="header-button" id="helpButton">?</div>
+          <div class="header-button" id="themeButton">🌙</div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
