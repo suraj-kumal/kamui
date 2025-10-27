@@ -5,13 +5,13 @@ class P2PFileShare {
     this.peerConnections = {};
     this.selectedPeer = null;
     this.currentFiles = [];
-    this.chunkSize = 8192;
     this.isInitiator = false;
     this.networkIP = null;
     this.transferQueue = [];
     this.isTransferring = false;
     this.isTransferComplete = false;
-
+    this.iceCandidateQueue = {};
+    this.pendingConnections = {}; // Track connection attempts
     this.initializeUI();
     this.getNetworkIP().then(() => {
       this.connectToServer();
@@ -46,46 +46,88 @@ class P2PFileShare {
     }
   }
 
+  // Dynamic chunk size calculator
+  getOptimalChunkSize(fileSize) {
+    const KB = 1024;
+    const MB = KB * 1024;
+
+    if (fileSize < 100 * KB) {
+      return 4 * KB; // Small files: 4KB chunks
+    } else if (fileSize < 1 * MB) {
+      return 8 * KB; // Small files: 8KB chunks
+    } else if (fileSize < 10 * MB) {
+      return 16 * KB; // Medium files: 16KB chunks
+    } else if (fileSize < 25 * MB) {
+      return 32 * KB; // Medium-large files: 32KB chunks
+    } else if (fileSize < 50 * MB) {
+      return 64 * KB; // Large files: 64KB chunks
+    } else if (fileSize < 100 * MB) {
+      return 128 * KB; // Large files: 128KB chunks
+    } else if (fileSize < 200 * MB) {
+      return 256 * KB; // Very large files: 256KB chunks
+    } else if (fileSize < 350 * MB) {
+      return 384 * KB; // Very large files: 384KB chunks
+    } else if (fileSize < 500 * MB) {
+      return 512 * KB; // Very large files: 512KB chunks
+    } else if (fileSize < 750 * MB) {
+      return 768 * KB; // Huge files: 768KB chunks
+    } else if (fileSize < 1 * GB) {
+      return 1 * MB; // Huge files: 1MB chunks
+    } else {
+      return 2 * MB; // Extremely large files: 2MB chunks
+    }
+  }
+
   initializeUI() {
     document.getElementById("deviceName").textContent = this.deviceId;
     const fileInput = document.getElementById("fileInput");
     fileInput.setAttribute("multiple", "true");
-
     fileInput.addEventListener("change", (e) => {
       this.currentFiles = Array.from(e.target.files);
       if (this.currentFiles.length > 0 && this.selectedPeer) {
         this.sendFiles(this.currentFiles);
       }
     });
-
     document.getElementById("helpButton").addEventListener("click", () => {
       alert(
         "Click on a peer device to start sharing files. Files are transferred directly between devices using WebRTC."
       );
     });
-
     document.getElementById("themeButton").addEventListener("click", () => {
-      document.body.style.backgroundColor =
-        document.body.style.backgroundColor === "white" ? "#1a1a1a" : "white";
+      document.body.classList.toggle("dark-theme");
+    });
 
-      const elements = document.getElementsByClassName("peer-info");
-      for (let i = 0; i < elements.length; i++) {
-        elements[i].style.color =
-          elements[i].style.color === "black" ? "white" : "black";
+    // Drag and drop support
+    const dropZone = document.body;
+    dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      if (this.selectedPeer) {
+        dropZone.classList.add("drag-over");
+      }
+    });
+
+    dropZone.addEventListener("dragleave", () => {
+      dropZone.classList.remove("drag-over");
+    });
+
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("drag-over");
+      if (this.selectedPeer && e.dataTransfer.files.length > 0) {
+        this.currentFiles = Array.from(e.dataTransfer.files);
+        this.sendFiles(this.currentFiles);
       }
     });
   }
 
   connectToServer() {
     this.socket = io();
-
     this.socket.on("connect", () => {
       this.socket.emit("register", {
         deviceId: this.deviceId,
         networkIP: this.networkIP,
       });
     });
-
     this.socket.on("peer-list", (peers) => {
       const sameLANPeers = peers.filter(
         (peer) =>
@@ -93,7 +135,6 @@ class P2PFileShare {
       );
       this.updatePeerList(sameLANPeers);
     });
-
     this.socket.on("signal", (data) => this.handleSignaling(data));
   }
 
@@ -109,7 +150,6 @@ class P2PFileShare {
   updatePeerList(peers) {
     const container = document.getElementById("peerContainer");
     container.innerHTML = "";
-
     peers.forEach((peer, index) => {
       const peerEl = document.createElement("div");
       peerEl.className = "peer";
@@ -122,7 +162,6 @@ class P2PFileShare {
           <div class="status-tooltip"></div>
           <div class="progress-ring"></div>
         `;
-
       this.positionPeer(peerEl, index, peers.length);
       peerEl.addEventListener("click", () => this.selectPeer(peer.deviceId));
       container.appendChild(peerEl);
@@ -131,7 +170,6 @@ class P2PFileShare {
 
   selectPeer(peerId) {
     this.selectedPeer = peerId;
-
     document.querySelectorAll(".peer").forEach((peer) => {
       peer.classList.remove("selected");
       if (peer.querySelector(".peer-info").textContent === peerId) {
@@ -139,17 +177,37 @@ class P2PFileShare {
       }
     });
 
+    // Check if connection already exists and is open
+    const existingConnection = this.peerConnections[peerId];
     if (
-      !this.peerConnections[peerId] ||
-      this.peerConnections[peerId].connectionState === "closed" ||
-      this.peerConnections[peerId].connectionState === "failed" ||
-      this.peerConnections[peerId]?.dataChannel?.readyState !== "open"
+      existingConnection &&
+      existingConnection.connectionState !== "closed" &&
+      existingConnection.connectionState !== "failed" &&
+      existingConnection.dataChannel?.readyState === "open"
     ) {
-      this.resetConnection(peerId);
-      this.isInitiator = true;
+      document.getElementById("fileInput").click();
+      return;
+    }
+
+    // Check if we're already trying to connect
+    if (this.pendingConnections[peerId]) {
+      console.log("Connection attempt already in progress");
+      return;
+    }
+
+    // Use polite peer strategy: lower deviceId becomes initiator
+    const shouldInitiate = this.deviceId.localeCompare(peerId) < 0;
+
+    this.resetConnection(peerId);
+    this.isInitiator = shouldInitiate;
+    this.pendingConnections[peerId] = true;
+
+    if (shouldInitiate) {
+      console.log(`${this.deviceId} initiating connection to ${peerId}`);
       this.createPeerConnection(peerId);
     } else {
-      document.getElementById("fileInput").click();
+      console.log(`${this.deviceId} waiting for connection from ${peerId}`);
+      this.updateTransferStatus(peerId, "Connecting...");
     }
   }
 
@@ -157,11 +215,9 @@ class P2PFileShare {
     const peerEl = Array.from(document.querySelectorAll(".peer")).find(
       (el) => el.querySelector(".peer-info").textContent === peerId
     );
-
     if (peerEl) {
       const tooltip = peerEl.querySelector(".status-tooltip");
       const progressRing = peerEl.querySelector(".progress-ring");
-
       if (progress > 0) {
         tooltip.textContent = `${status} ${Math.round(progress)}%`;
         tooltip.style.opacity = "1";
@@ -184,17 +240,32 @@ class P2PFileShare {
 
   async createPeerConnection(peerId) {
     const peerConnection = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+      ],
     });
-
     this.peerConnections[peerId] = peerConnection;
+    this.iceCandidateQueue[peerId] = [];
 
     peerConnection.onconnectionstatechange = () => {
-      if (
+      console.log(
+        `Connection state with ${peerId}:`,
+        peerConnection.connectionState
+      );
+
+      if (peerConnection.connectionState === "connected") {
+        delete this.pendingConnections[peerId];
+        this.updateTransferStatus(peerId, "Connected");
+      } else if (
         peerConnection.connectionState === "failed" ||
         peerConnection.connectionState === "closed"
       ) {
+        delete this.pendingConnections[peerId];
         this.updateTransferStatus(peerId, "Connection lost");
+        setTimeout(() => {
+          this.updateTransferStatus(peerId, "");
+        }, 3000);
       }
     };
 
@@ -210,16 +281,16 @@ class P2PFileShare {
     };
 
     peerConnection.ondatachannel = (event) => {
+      console.log(`Data channel received from ${peerId}`);
       this.setupDataChannel(event.channel, peerId);
     };
 
     if (this.isInitiator) {
       const dataChannel = peerConnection.createDataChannel("fileTransfer");
       this.setupDataChannel(dataChannel, peerId);
-
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
-
+      console.log(`Sending offer to ${peerId}`);
       this.socket.emit("signal", {
         type: "offer",
         offer: offer,
@@ -235,15 +306,24 @@ class P2PFileShare {
     let fileBuffer = [];
     let currentFileIndex = 0;
     let totalFiles = 0;
+    let expectedChunks = 0;
+    let receivedChunks = 0;
 
     dataChannel.onopen = () => {
+      console.log(`Data channel opened with ${peerId}`);
+      delete this.pendingConnections[peerId];
       this.updateTransferStatus(peerId, "Connected");
-      if (this.isInitiator) {
-        document.getElementById("fileInput").click();
+
+      // Auto-open file picker only if this peer initiated the selection
+      if (this.isInitiator && this.selectedPeer === peerId) {
+        setTimeout(() => {
+          document.getElementById("fileInput").click();
+        }, 100);
       }
     };
 
     dataChannel.onclose = () => {
+      console.log(`Data channel closed with ${peerId}`);
       if (!this.isTransferComplete) {
         this.updateTransferStatus(peerId, "Connection closed");
         setTimeout(() => {
@@ -262,43 +342,64 @@ class P2PFileShare {
 
     dataChannel.onmessage = (event) => {
       const data = event.data;
-
       if (typeof data === "string") {
-        const message = JSON.parse(data);
+        try {
+          const message = JSON.parse(data);
 
-        if (message.type === "batch-start") {
-          totalFiles = message.totalFiles;
-          currentFileIndex = 0;
-          this.isTransferComplete = false;
-        } else if (message.type === "file-start") {
-          fileInfo = message;
-          receivedSize = 0;
-          fileBuffer = [];
-          currentFileIndex = message.fileIndex;
-          this.updateTransferStatus(
-            peerId,
-            `Receiving file ${currentFileIndex}/${totalFiles}:`,
-            0
-          );
-        } else if (message.type === "batch-end") {
-          this.isTransferComplete = true;
-          this.updateTransferStatus(peerId, "All files received!");
-          dataChannel.send(JSON.stringify({ type: "transfer-complete" }));
-          setTimeout(() => {
-            this.updateTransferStatus(peerId, "");
-            this.resetConnection(peerId);
-          }, 3000);
-        } else if (message.type === "transfer-complete") {
-          this.isTransferComplete = true;
-          this.updateTransferStatus(peerId, "Files sent successfully!");
-          setTimeout(() => {
-            this.updateTransferStatus(peerId, "");
-            this.resetConnection(peerId);
-          }, 3000);
+          if (message.type === "batch-start") {
+            totalFiles = message.totalFiles;
+            currentFileIndex = 0;
+            this.isTransferComplete = false;
+          } else if (message.type === "file-start") {
+            if (
+              !message.fileName ||
+              !message.fileSize ||
+              message.fileSize < 0
+            ) {
+              console.error("Invalid file metadata received");
+              return;
+            }
+            fileInfo = message;
+            receivedSize = 0;
+            fileBuffer = [];
+            receivedChunks = 0;
+            expectedChunks = Math.ceil(message.fileSize / message.chunkSize);
+            currentFileIndex = message.fileIndex;
+            this.updateTransferStatus(
+              peerId,
+              `Receiving file ${currentFileIndex}/${totalFiles}:`,
+              0
+            );
+            // Send ready acknowledgment
+            dataChannel.send(JSON.stringify({ type: "ready" }));
+          } else if (message.type === "batch-end") {
+            this.isTransferComplete = true;
+            this.updateTransferStatus(peerId, "All files received!");
+            dataChannel.send(JSON.stringify({ type: "transfer-complete" }));
+            setTimeout(() => {
+              this.updateTransferStatus(peerId, "");
+              this.resetConnection(peerId);
+            }, 3000);
+          } else if (message.type === "transfer-complete") {
+            this.isTransferComplete = true;
+            this.updateTransferStatus(peerId, "Files sent successfully!");
+            setTimeout(() => {
+              this.updateTransferStatus(peerId, "");
+              this.resetConnection(peerId);
+            }, 3000);
+          }
+        } catch (error) {
+          console.error("Error parsing message:", error);
         }
       } else {
+        if (!fileInfo) {
+          console.error("Received data without file info");
+          return;
+        }
+
         fileBuffer.push(data);
         receivedSize += data.byteLength;
+        receivedChunks++;
 
         const progress = (receivedSize / fileInfo.fileSize) * 100;
         this.updateTransferStatus(
@@ -307,23 +408,43 @@ class P2PFileShare {
           progress
         );
 
+        // Send acknowledgment for every chunk to maintain flow control
+        dataChannel.send(
+          JSON.stringify({
+            type: "chunk-ack",
+            receivedChunks: receivedChunks,
+            expectedChunks: expectedChunks,
+          })
+        );
+
         if (receivedSize === fileInfo.fileSize) {
-          const file = new Blob(fileBuffer);
+          const file = new Blob(fileBuffer, {
+            type: fileInfo.fileType || "application/octet-stream",
+          });
           const downloadUrl = URL.createObjectURL(file);
           const a = document.createElement("a");
           a.href = downloadUrl;
           a.download = fileInfo.fileName;
+          document.body.appendChild(a);
           a.click();
-          URL.revokeObjectURL(downloadUrl);
-          fileBuffer = [];
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(downloadUrl), 100);
 
-          if (currentFileIndex === totalFiles) {
-            this.updateTransferStatus(peerId, "Transfer complete!");
-          }
+          fileBuffer = [];
+          receivedSize = 0;
+          fileInfo = null;
+          receivedChunks = 0;
+          expectedChunks = 0;
+        } else if (receivedSize > fileInfo.fileSize) {
+          console.error("Received more data than expected");
+          fileBuffer = [];
+          receivedSize = 0;
+          fileInfo = null;
+          receivedChunks = 0;
+          expectedChunks = 0;
         }
       }
     };
-
     this.peerConnections[peerId].dataChannel = dataChannel;
   }
 
@@ -335,12 +456,37 @@ class P2PFileShare {
       this.peerConnections[peerId].close();
       delete this.peerConnections[peerId];
     }
+    delete this.iceCandidateQueue[peerId];
+    delete this.pendingConnections[peerId];
     this.isInitiator = false;
     this.isTransferComplete = false;
   }
 
   async handleSignaling(data) {
     try {
+      console.log(`Received signal from ${data.from}:`, data.type);
+
+      // Handle glare (both peers sent offers)
+      if (data.type === "offer" && this.peerConnections[data.from]) {
+        const existingConnection = this.peerConnections[data.from];
+
+        // If we have an ongoing connection attempt, use polite peer strategy
+        if (existingConnection.signalingState !== "stable") {
+          const shouldIgnore = this.deviceId.localeCompare(data.from) < 0;
+
+          if (shouldIgnore) {
+            console.log(`Ignoring offer from ${data.from} (polite peer)`);
+            return;
+          } else {
+            console.log(
+              `Rolling back for offer from ${data.from} (impolite peer)`
+            );
+            await existingConnection.setLocalDescription({ type: "rollback" });
+            this.isInitiator = false;
+          }
+        }
+      }
+
       if (!this.peerConnections[data.from]) {
         this.isInitiator = false;
         await this.createPeerConnection(data.from);
@@ -354,22 +500,28 @@ class P2PFileShare {
         );
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
-
+        console.log(`Sending answer to ${data.from}`);
         this.socket.emit("signal", {
           type: "answer",
           answer: answer,
           from: this.deviceId,
           to: data.from,
         });
+
+        await this.processQueuedCandidates(data.from);
       } else if (data.type === "answer") {
         await peerConnection.setRemoteDescription(
           new RTCSessionDescription(data.answer)
         );
+
+        await this.processQueuedCandidates(data.from);
       } else if (data.type === "candidate") {
         if (peerConnection.remoteDescription) {
           await peerConnection.addIceCandidate(
             new RTCIceCandidate(data.candidate)
           );
+        } else {
+          this.iceCandidateQueue[data.from].push(data.candidate);
         }
       }
     } catch (error) {
@@ -382,9 +534,23 @@ class P2PFileShare {
     }
   }
 
+  async processQueuedCandidates(peerId) {
+    const peerConnection = this.peerConnections[peerId];
+    if (!peerConnection || !this.iceCandidateQueue[peerId]) return;
+
+    const candidates = this.iceCandidateQueue[peerId];
+    for (const candidate of candidates) {
+      try {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (error) {
+        console.error("Error adding queued ICE candidate:", error);
+      }
+    }
+    this.iceCandidateQueue[peerId] = [];
+  }
+
   async sendFiles(files) {
     const dataChannel = this.peerConnections[this.selectedPeer]?.dataChannel;
-
     if (!dataChannel || dataChannel.readyState !== "open") {
       this.updateTransferStatus(this.selectedPeer, "Reconnecting...");
       await this.reconnectAndRetry(files);
@@ -394,45 +560,59 @@ class P2PFileShare {
     dataChannel.send(
       JSON.stringify({ type: "batch-start", totalFiles: files.length })
     );
-
     for (let i = 0; i < files.length; i++) {
       await this.sendFile(files[i], i + 1, files.length);
     }
-
     dataChannel.send(JSON.stringify({ type: "batch-end" }));
-    // this.isTransferComplete = true;
   }
 
   async reconnectAndRetry(files) {
-    this.resetConnection(this.selectedPeer);
-    this.isInitiator = true;
-    await this.createPeerConnection(this.selectedPeer);
+    try {
+      this.resetConnection(this.selectedPeer);
+      this.isInitiator = true;
+      await this.createPeerConnection(this.selectedPeer);
 
-    return new Promise((resolve) => {
-      const checkConnection = setInterval(() => {
-        const newDataChannel =
-          this.peerConnections[this.selectedPeer]?.dataChannel;
-        if (newDataChannel?.readyState === "open") {
-          clearInterval(checkConnection);
-          this.sendFiles(files);
-          resolve();
-        }
-      }, 100);
+      return new Promise((resolve, reject) => {
+        let attempts = 0;
+        const maxAttempts = 100;
 
+        const checkConnection = setInterval(() => {
+          attempts++;
+          const newDataChannel =
+            this.peerConnections[this.selectedPeer]?.dataChannel;
+          if (newDataChannel?.readyState === "open") {
+            clearInterval(checkConnection);
+            this.sendFiles(files);
+            resolve();
+          } else if (attempts >= maxAttempts) {
+            clearInterval(checkConnection);
+            this.updateTransferStatus(this.selectedPeer, "Connection failed");
+            setTimeout(() => {
+              this.updateTransferStatus(this.selectedPeer, "");
+            }, 3000);
+            reject(new Error("Connection timeout"));
+          }
+        }, 100);
+      });
+    } catch (error) {
+      console.error("Reconnection failed:", error);
+      this.updateTransferStatus(this.selectedPeer, "Connection failed");
       setTimeout(() => {
-        clearInterval(checkConnection);
-        this.updateTransferStatus(this.selectedPeer, "Connection failed");
-        setTimeout(() => {
-          this.updateTransferStatus(this.selectedPeer, "");
-        }, 3000);
-        resolve();
-      }, 10000);
-    });
+        this.updateTransferStatus(this.selectedPeer, "");
+      }, 3000);
+    }
   }
 
   async sendFile(file, fileIndex = 1, totalFiles = 1) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const dataChannel = this.peerConnections[this.selectedPeer]?.dataChannel;
+
+      if (!dataChannel || dataChannel.readyState !== "open") {
+        reject(new Error("Data channel not ready"));
+        return;
+      }
+
+      const chunkSize = this.getOptimalChunkSize(file.size);
       const metadata = {
         type: "file-start",
         fileName: file.name,
@@ -440,37 +620,83 @@ class P2PFileShare {
         fileType: file.type,
         fileIndex,
         totalFiles,
+        chunkSize,
       };
 
-      dataChannel.send(JSON.stringify(metadata));
-
+      // Wait for receiver to be ready
+      let canSendNextChunk = true;
+      const maxBufferSize = 1024 * 1024; // 1MB buffer limit
       let offset = 0;
       const reader = new FileReader();
 
-      reader.onload = (e) => {
-        dataChannel.send(e.target.result);
-        offset += e.target.result.byteLength;
-
-        const progress = (offset / file.size) * 100;
-        this.updateTransferStatus(
-          this.selectedPeer,
-          `Sending file ${fileIndex}/${totalFiles}:`,
-          progress
-        );
-
-        if (offset < file.size) {
-          readSlice(offset);
-        } else {
-          resolve();
+      // Handle flow control acknowledgments
+      const messageHandler = (event) => {
+        if (typeof event.data === "string") {
+          try {
+            const message = JSON.parse(event.data);
+            if (message.type === "chunk-ack") {
+              canSendNextChunk = true;
+              sendNextChunk();
+            } else if (message.type === "ready") {
+              // Start sending chunks when receiver is ready
+              canSendNextChunk = true;
+              sendNextChunk();
+            }
+          } catch (error) {
+            console.error("Error parsing message:", error);
+          }
         }
       };
 
-      const readSlice = (o) => {
-        const slice = file.slice(o, o + this.chunkSize);
+      dataChannel.addEventListener("message", messageHandler);
+
+      const cleanup = () => {
+        dataChannel.removeEventListener("message", messageHandler);
+      };
+
+      const sendNextChunk = () => {
+        if (!canSendNextChunk || dataChannel.bufferedAmount > maxBufferSize) {
+          setTimeout(sendNextChunk, 100);
+          return;
+        }
+
+        if (offset >= file.size) {
+          cleanup();
+          resolve();
+          return;
+        }
+
+        const slice = file.slice(offset, offset + chunkSize);
         reader.readAsArrayBuffer(slice);
       };
 
-      readSlice(0);
+      reader.onerror = (error) => {
+        console.error("FileReader error:", error);
+        cleanup();
+        reject(error);
+      };
+
+      reader.onload = (e) => {
+        try {
+          dataChannel.send(e.target.result);
+          offset += e.target.result.byteLength;
+          canSendNextChunk = false;
+
+          const progress = (offset / file.size) * 100;
+          this.updateTransferStatus(
+            this.selectedPeer,
+            `Sending file ${fileIndex}/${totalFiles}:`,
+            progress
+          );
+        } catch (error) {
+          console.error("Error sending chunk:", error);
+          cleanup();
+          reject(error);
+        }
+      };
+
+      // Start the transfer process by sending metadata
+      dataChannel.send(JSON.stringify(metadata));
     });
   }
 }
