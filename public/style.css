@@ -298,6 +298,10 @@ body[style*="background-color: white"] .device-status {
   color: #0066cc;
 }
 
+body[style*="background-color: white"] .peer-info {
+  color: #000000;
+}
+
 body[style*="background-color: white"] .header-button {
   background-color: rgba(200, 200, 200, 0.5);
   color: #000000;
@@ -376,6 +380,10 @@ body.light-theme .radar-circles {
 
 body.light-theme .device-status {
   color: #0066cc;
+}
+
+body.light-theme .peer-info {
+  color: #000000;
 }
 
 body.light-theme .header-button {
