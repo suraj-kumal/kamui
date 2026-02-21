@@ -1,8 +1,16 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Oxygen,
+    Ubuntu,
+    Cantarell,
+    sans-serif;
   background-color: #1a1a1a;
   color: #ffffff;
   height: 100vh;
@@ -296,6 +304,86 @@ body[style*="background-color: white"] .header-button {
 }
 
 body[style*="background-color: white"] .header-button:hover {
+  background-color: rgba(200, 200, 200, 0.8);
+}
+
+body.dark-theme {
+  background-color: #1a1a1a;
+  color: #ffffff;
+}
+
+body.dark-theme .radar-background {
+  background: -webkit-radial-gradient(circle, transparent 10%, #1a1a1a 90%);
+  background: radial-gradient(circle, transparent 10%, #1a1a1a 90%);
+}
+
+body.dark-theme .radar-circles {
+  background: -webkit-repeating-radial-gradient(
+    circle,
+    transparent,
+    transparent 50px,
+    rgba(255, 255, 255, 0.03) 50px,
+    rgba(255, 255, 255, 0.03) 51px
+  );
+  background: repeating-radial-gradient(
+    circle,
+    transparent,
+    transparent 50px,
+    rgba(255, 255, 255, 0.03) 50px,
+    rgba(255, 255, 255, 0.03) 51px
+  );
+}
+
+body.dark-theme .device-status {
+  color: #4a9eff;
+}
+
+body.dark-theme .header-button {
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+}
+
+body.dark-theme .header-button:hover {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+body.light-theme {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+body.light-theme .radar-background {
+  background: -webkit-radial-gradient(circle, transparent 10%, #ffffff 90%);
+  background: radial-gradient(circle, transparent 10%, #ffffff 90%);
+}
+
+body.light-theme .radar-circles {
+  background: -webkit-repeating-radial-gradient(
+    circle,
+    transparent,
+    transparent 50px,
+    rgba(0, 0, 0, 0.05) 50px,
+    rgba(0, 0, 0, 0.05) 51px
+  );
+  background: repeating-radial-gradient(
+    circle,
+    transparent,
+    transparent 50px,
+    rgba(0, 0, 0, 0.05) 50px,
+    rgba(0, 0, 0, 0.05) 51px
+  );
+}
+
+body.light-theme .device-status {
+  color: #0066cc;
+}
+
+body.light-theme .header-button {
+  background-color: rgba(200, 200, 200, 0.5);
+  color: #000000;
+}
+
+body.light-theme .header-button:hover {
   background-color: rgba(200, 200, 200, 0.8);
 }
 
