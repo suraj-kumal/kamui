@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -7,8 +8,14 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+const { visitors, getStats } = require("./analytics");
+
+app.use(visitors);
+app.get("/api/v1/stats", getStats);
+
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/images", express.static("public/images"));
+
 const connectedPeers = new Map();
 
 io.on("connection", (socket) => {
