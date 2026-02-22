@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://kamui-share.onrender.com/sitemap.xml
+Sitemap: https://kamui.onthewifi.com/sitemap.xml
