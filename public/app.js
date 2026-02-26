@@ -39,6 +39,21 @@ class P2PFileShare {
 
   // ─── Chunk Size ────────────────────────────────────────────────────────────
 
+  // getOptimalChunkSize(fileSize) {
+  //   const KB = 1024;
+  //   const MB = KB * 1024;
+  //   if (fileSize < 100 * KB) return 4 * KB;
+  //   if (fileSize < 1 * MB) return 8 * KB;
+  //   if (fileSize < 10 * MB) return 16 * KB;
+  //   if (fileSize < 25 * MB) return 32 * KB;
+  //   if (fileSize < 50 * MB) return 64 * KB;
+  //   if (fileSize < 100 * MB) return 128 * KB;
+  //   if (fileSize < 200 * MB) return 256 * KB;
+  //   if (fileSize < 350 * MB) return 384 * KB;
+  //   if (fileSize < 500 * MB) return 512 * KB;
+  //   if (fileSize < 750 * MB) return 768 * KB;
+  //   return 1 * MB;
+  // }
   getOptimalChunkSize(fileSize) {
     const KB = 1024;
     const MB = KB * 1024;
@@ -48,11 +63,7 @@ class P2PFileShare {
     if (fileSize < 25 * MB) return 32 * KB;
     if (fileSize < 50 * MB) return 64 * KB;
     if (fileSize < 100 * MB) return 128 * KB;
-    if (fileSize < 200 * MB) return 256 * KB;
-    if (fileSize < 350 * MB) return 384 * KB;
-    if (fileSize < 500 * MB) return 512 * KB;
-    if (fileSize < 750 * MB) return 768 * KB;
-    return 1 * MB;
+    return 256 * KB; // ✅ hard cap — Safari and Firefox safe
   }
 
   // ─── UI ────────────────────────────────────────────────────────────────────
@@ -376,7 +387,8 @@ class P2PFileShare {
         }
 
         // Pause sending if WebRTC buffer is filling up (> 1MB)
-        if (dataChannel.bufferedAmount > 1024 * 1024) {
+        // if fails use 1024 instead of 256
+        if (dataChannel.bufferedAmount > 256 * 1024) {
           dataChannel.onbufferedamountlow = () => {
             dataChannel.onbufferedamountlow = null;
             sendNextChunk();
@@ -518,6 +530,12 @@ class P2PFileShare {
     let fileInfo = null;
     let fileBuffer = [];
     let receivedSize = 0;
+
+    //changes
+    let bufferedSize = 0;
+    const CONSOLIDATE_THRESHOLD = 50 * 1024 * 1024;
+    //upto Here
+
     let currentFileIndex = 0;
     let totalFiles = 0;
 
@@ -560,6 +578,16 @@ class P2PFileShare {
         fileBuffer.push(data);
         receivedSize += data.byteLength;
 
+        //changes
+        bufferedSize += data.byteLength;
+
+        if (bufferedSize >= CONSOLIDATE_THRESHOLD) {
+          fileBuffer = [new Blob(fileBuffer)];
+          bufferedSize = 0;
+        }
+
+        //upto here
+
         this.updateTransferStatus(
           fromPeerId,
           `Receiving ${currentFileIndex}/${totalFiles}:`,
@@ -580,6 +608,7 @@ class P2PFileShare {
           // Reset for next file in batch
           fileBuffer = [];
           receivedSize = 0;
+          bufferedSize = 0;
           fileInfo = null;
         }
       }
