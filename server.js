@@ -10,6 +10,10 @@ const io = new Server(server);
 
 const { visitors, getStats } = require("./analytics");
 
+app.get("/api/v1/foo", (req, res) => {
+  res.json({ message: "bar" });
+});
+
 app.use(visitors);
 app.get("/api/v1/stats", getStats);
 
