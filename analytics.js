@@ -18,14 +18,26 @@ const Stats = mongoose.model("Stats", statsSchema);
 const visitors = async (req, res, next) => {
   const today = new Date().toISOString().split("T")[0];
 
-  const isAsset = req.path.match(
-    /\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2)$/,
+  // const isAsset = req.path.match(
+  //   /\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2)$/,
+  // );
+  // const isStats = req.path === "/api/v1/stats";
+
+  // //fire and forget no await
+
+  // if (!isAsset && !isStats) {
+  //   Stats.findOneAndUpdate(
+  //     { date: today },
+  //     { $inc: { visitors: 1 } },
+  //     { upsert: true },
+  //   ).catch(console.error);
+  // }
+  const isBot = /bot|crawler|spider|crawling/i.test(
+    req.headers["user-agent"] || "",
   );
-  const isStats = req.path === "/api/v1/stats";
+  const isHomepage = req.path === "/" && req.method === "GET";
 
-  //fire and forget no await
-
-  if (!isAsset && !isStats) {
+  if (isHomepage & !isBot) {
     Stats.findOneAndUpdate(
       { date: today },
       { $inc: { visitors: 1 } },
