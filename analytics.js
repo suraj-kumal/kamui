@@ -35,9 +35,11 @@ const visitors = async (req, res, next) => {
   const isBot = /bot|crawler|spider|crawling/i.test(
     req.headers["user-agent"] || "",
   );
+
+  const isSocketIO = req.path.startsWith("/socket.io");
   const isHomepage = req.path === "/" && req.method === "GET";
 
-  if (isHomepage & !isBot) {
+  if (isHomepage & !isBot & !isSocketIO) {
     Stats.findOneAndUpdate(
       { date: today },
       { $inc: { visitors: 1 } },
