@@ -18,20 +18,6 @@ const Stats = mongoose.model("Stats", statsSchema);
 const visitors = async (req, res, next) => {
   const today = new Date().toISOString().split("T")[0];
 
-  // const isAsset = req.path.match(
-  //   /\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2)$/,
-  // );
-  // const isStats = req.path === "/api/v1/stats";
-
-  // //fire and forget no await
-
-  // if (!isAsset && !isStats) {
-  //   Stats.findOneAndUpdate(
-  //     { date: today },
-  //     { $inc: { visitors: 1 } },
-  //     { upsert: true },
-  //   ).catch(console.error);
-  // }
   const isBot = /bot|crawler|spider|crawling/i.test(
     req.headers["user-agent"] || "",
   );
@@ -39,7 +25,7 @@ const visitors = async (req, res, next) => {
   const isSocketIO = req.path.startsWith("/socket.io");
   const isHomepage = req.path === "/" && req.method === "GET";
 
-  if (isHomepage & !isBot & !isSocketIO) {
+  if (isHomepage && !isBot && !isSocketIO) {
     Stats.findOneAndUpdate(
       { date: today },
       { $inc: { visitors: 1 } },
@@ -55,7 +41,7 @@ const getStats = async (req, res) => {
   if (authHeader !== token) {
     return res.status(401).json({ error: "Unauthorized" });
   }
-  const stats = await Stats.find().sort({ date: -1 }).limit(30);
+  const stats = await Stats.find().sort({ date: -1 });
   res.json(stats);
 };
 
