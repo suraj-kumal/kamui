@@ -16,7 +16,10 @@ const statsSchema = new mongoose.Schema({
 const Stats = mongoose.model("Stats", statsSchema);
 
 const visitors = async (req, res, next) => {
-  const today = new Date().toISOString().split("T")[0];
+  //const today = new Date().toISOString().split("T")[0];
+  const today = new Date().toLocaleDateString("en-CA", {
+    timeZone: "Asia/Kathmandu",
+    });
 
   const isBot = /bot|crawler|spider|crawling/i.test(
     req.headers["user-agent"] || "",
